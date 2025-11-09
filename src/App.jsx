@@ -1,79 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import ProductCard from './components/ProductCard';
+import ProductGrid from './components/ProductGrid';
 import CartDrawer from './components/CartDrawer';
-
-const demoProducts = [
-  {
-    id: 'snack-1',
-    name: 'Maggi Bowl (Hot & Fresh)',
-    desc: 'Cooked to order at the canteen. Pickup in 10 mins.',
-    price: 45,
-    mrp: 55,
-    image:
-      'https://images.unsplash.com/photo-1526318472351-c75fcf070305?q=80&w=1200&auto=format&fit=crop',
-    badge: 'Canteen',
-    category: 'Food',
-  },
-  {
-    id: 'book-1',
-    name: 'Data Structures Notes (PDF)',
-    desc: 'Second-year topper notes. Clean and concise.',
-    price: 79,
-    image:
-      'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1200&auto=format&fit=crop',
-    badge: 'Digital',
-    category: 'Notes',
-  },
-  {
-    id: 'merch-1',
-    name: 'College Hoodie (Navy)',
-    desc: 'Official club merchandise. Sizes S-XL.',
-    price: 999,
-    mrp: 1299,
-    image:
-      'https://images.unsplash.com/photo-1548883354-7622d03aca27?q=80&w=1200&auto=format&fit=crop',
-    badge: 'Merch',
-    category: 'Merch',
-  },
-  {
-    id: 'service-1',
-    name: 'Event Pass - Battle of Bands',
-    desc: 'Entry ticket for Saturday 7 PM, Auditorium.',
-    price: 199,
-    image:
-      'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?q=80&w=1200&auto=format&fit=crop',
-    badge: 'Event',
-    category: 'Events',
-  },
-  {
-    id: 'stationery-1',
-    name: 'Exam Kit (Pens + Highlighter)',
-    desc: 'Everything you need for finals week.',
-    price: 129,
-    image:
-      'https://images.unsplash.com/photo-1481070555726-e2fe8357725c?q=80&w=1200&auto=format&fit=crop',
-    badge: 'Stationery',
-    category: 'Stationery',
-  },
-];
 
 export default function App() {
   const [query, setQuery] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
   const [cart, setCart] = useState([]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return demoProducts;
-    return demoProducts.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.desc.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q)
-    );
-  }, [query]);
+  const backend = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
   const addToCart = (product) => {
     setCart((prev) => {
@@ -92,6 +27,43 @@ export default function App() {
 
   const clearCart = () => setCart([]);
 
+  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+  const handleCheckout = async () => {
+    const payload = {
+      buyer_name: 'Guest User',
+      buyer_email: 'guest@example.com',
+      payment_method: 'COD',
+      items: cart.map((i) => ({
+        product_id: i.id,
+        title: i.name || i.title,
+        price: i.price,
+        quantity: i.qty,
+        image: i.image,
+      })),
+      total_amount: total,
+    };
+    try {
+      setLoading(true);
+      const res = await fetch(`${backend}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Checkout failed');
+      alert('Order placed! ID: ' + data.id);
+      clearCart();
+      setCartOpen(false);
+    } catch (e) {
+      alert(e.message || 'Checkout failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [loading, setLoading] = useState(false);
+
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <Navbar
@@ -105,14 +77,9 @@ export default function App() {
       <main id="products" className="mx-auto max-w-6xl px-4 py-10">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-bold">Popular near you</h2>
-          <div className="text-sm text-gray-500">{filtered.length} items</div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((p) => (
-            <ProductCard key={p.id} product={p} onAdd={addToCart} />
-          ))}
-        </div>
+        <ProductGrid onAdd={addToCart} query={query} />
 
         <section id="sell" className="mt-16 rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/50 p-6 text-center">
           <h3 className="text-lg font-semibold text-gray-900">Want to sell something?</h3>
@@ -131,6 +98,8 @@ export default function App() {
         items={cart}
         onRemove={removeFromCart}
         onClear={clearCart}
+        onCheckout={handleCheckout}
+        loading={loading}
       />
 
       <footer className="border-t py-8 text-center text-sm text-gray-500">

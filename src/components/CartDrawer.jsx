@@ -1,7 +1,7 @@
 import React from 'react';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, Loader2 } from 'lucide-react';
 
-const CartDrawer = ({ open, onClose, items, onRemove, onClear }) => {
+const CartDrawer = ({ open, onClose, items, onRemove, onClear, onCheckout, loading }) => {
   const total = items.reduce((sum, it) => sum + it.price * it.qty, 0);
 
   return (
@@ -28,9 +28,9 @@ const CartDrawer = ({ open, onClose, items, onRemove, onClear }) => {
             <ul className="space-y-4">
               {items.map((item) => (
                 <li key={item.id} className="flex items-center gap-3">
-                  <img src={item.image} alt={item.name} className="h-16 w-16 rounded-md object-cover" />
+                  <img src={item.image} alt={item.name || item.title} className="h-16 w-16 rounded-md object-cover" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                    <p className="text-sm font-medium text-gray-900">{item.name || item.title}</p>
                     <p className="text-xs text-gray-500">Qty: {item.qty}</p>
                   </div>
                   <div className="text-right">
@@ -57,11 +57,20 @@ const CartDrawer = ({ open, onClose, items, onRemove, onClear }) => {
             <button
               onClick={onClear}
               className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-red-300 hover:text-red-700"
+              disabled={loading}
             >
               <Trash2 size={16} /> Clear
             </button>
-            <button className="flex-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-              Checkout
+            <button
+              onClick={onCheckout}
+              className="flex-1 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={items.length === 0 || loading}
+            >
+              {loading ? (
+                <span className="inline-flex items-center gap-2"><Loader2 className="animate-spin" size={16} /> Processing</span>
+              ) : (
+                'Checkout'
+              )}
             </button>
           </div>
         </div>
